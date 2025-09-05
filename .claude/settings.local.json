@@ -27,7 +27,8 @@
       "WebFetch(domain:github.com)",
       "Bash(tree:*)",
       "Bash(mv:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(chmod:*)"
     ],
     "deny": [],
     "ask": []

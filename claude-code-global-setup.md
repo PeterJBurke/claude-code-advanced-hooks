@@ -1,713 +1,387 @@
 # Claude Code Global Setup Guide
 
-This guide will set up Claude Code with comprehensive hooks, statusline, and MCP servers globally in your `~/.claude` directory so they work across all projects.
+This guide will automatically download and install the Claude Code advanced hook system globally in your `~/.claude` directory so it works across all projects.
 
-## Overview
+## 🚀 Quick Installation (Recommended)
 
-This setup includes:
-- **Comprehensive hook system** with logging, TTS notifications, and safety checks
-- **StatusLine integration** with ccusage for usage tracking  
-- **MCP servers** for browser integration
-- **AI-powered features** using Anthropic and OpenAI APIs
-- **Text-to-speech notifications** with multiple TTS providers
+### One-Line Installer
 
-## Prerequisites
+```bash
+curl -fsSL https://raw.githubusercontent.com/PeterJBurke/claude-code-advanced-hooks/main/install-global.sh | bash
+```
 
-### Required Software
+*Don't have the installer script yet? Use the manual installation below, or help create it by following the manual steps!*
+
+## 📋 Manual Installation
+
+### Prerequisites
 
 1. **uv** (Python package manager)
    ```bash
    curl -LsSf https://astral.sh/uv/install.sh | sh
+   source ~/.bashrc  # or ~/.zshrc
    ```
 
-2. **Node.js and npm** (for ccusage and MCP servers)
+2. **Node.js and npm** (for statusline)
    ```bash
    # macOS with Homebrew
    brew install node
    
+   # Ubuntu/Debian
+   sudo apt update && sudo apt install nodejs npm
+   
    # Or download from nodejs.org
    ```
 
-3. **Python 3.13+** (will be managed by uv)
-   ```bash
-   # uv will handle Python installation automatically
-   ```
-
-## Setup Instructions
-
-### 1. Create Global Claude Directory Structure
+### Step 1: Create Directory Structure
 
 ```bash
-mkdir -p ~/.claude/hooks/utils/{llm,tts,utils}
+# Create the global Claude directory structure
+mkdir -p ~/.claude/hooks/utils/{llm,tts}
 cd ~/.claude
 ```
 
-### 2. Create Main Configuration Files
+### Step 2: Download Configuration Files
 
-#### `~/.claude/settings.json`
-```json
-{
-  "permissions": {
-    "allow": [
-      "Bash(find:*)",
-      "Bash(python:*)",
-      "Bash(curl:*)",
-      "Bash(wget:*)",
-      "Bash(timeout:*)",
-      "Bash(xdg-open:*)",
-      "Bash(git checkout:*)",
-      "Bash(uv run:*)",
-      "Read(/Users/$USER/.claude/**)",
-      "Read(/Users/$USER/**)",
-      "Read(/Users/$USER/.config/**)",
-      "Bash(sudo:*)",
-      "Bash(claude --version)",
-      "Bash(uv:*)",
-      "Bash(source .env)",
-      "Bash(source:*)",
-      "Bash(echo:*)",
-      "WebFetch(domain:ccusage.com)",
-      "Bash(bun x ccusage:*)",
-      "Bash(npx -y ccusage:*)",
-      "Bash(grep:*)"
-    ],
-    "deny": [],
-    "ask": []
-  },
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run ~/.claude/hooks/pre_tool_use.py"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run ~/.claude/hooks/post_tool_use.py"
-          }
-        ]
-      }
-    ],
-    "Notification": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run ~/.claude/hooks/notification.py"
-          }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run ~/.claude/hooks/subagent_stop.py --notify"
-          }
-        ]
-      }
-    ],
-    "PreCompact": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run ~/.claude/hooks/pre_compact.py --notify"
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run ~/.claude/hooks/user_prompt_submit.py --notify"
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run ~/.claude/hooks/session_start.py --notify"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run ~/.claude/hooks/stop.py --notify"
-          }
-        ]
-      }
-    ]
-  },
-  "statusLine": {
-    "type": "command",
-    "command": "npx -y ccusage statusline",
-    "padding": 0
-  },
-  "mcpServers": {
-    "browser-mcp": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@browser-mcp/mcp-server"
-      ],
-      "env": {
-        "BROWSER_MCP_PORT": "3000",
-        "BROWSER_HEADLESS": "false"
-      }
-    }
-  }
-}
-```
-
-### 3. Environment Variables
-
-Create `~/.claude/.env`:
 ```bash
-# Required API Keys
-ANTHROPIC_API_KEY=your-anthropic-api-key-here
-OPENAI_API_KEY=your-openai-api-key-here
-ELEVENLABS_API_KEY=your-elevenlabs-api-key-here
+# Download main settings
+curl -fsSL https://raw.githubusercontent.com/PeterJBurke/claude-code-advanced-hooks/main/.claude/settings.json -o ~/.claude/settings.json
 
-# Engineer Name (for personalization)
-ENGINEER_NAME=YourName
-
-# Optional: Custom log directory
-CLAUDE_HOOKS_LOG_DIR=~/.claude/logs
-
-# Optional: Additional integrations
-MAVLINK_HOST=192.168.1.100
+# Download project template (optional)  
+curl -fsSL https://raw.githubusercontent.com/PeterJBurke/claude-code-advanced-hooks/main/.claude/CLAUDE.md -o ~/.claude/CLAUDE.md
 ```
 
-**🔑 API Key Setup:**
-- **Anthropic:** Get from https://console.anthropic.com/
-- **OpenAI:** Get from https://platform.openai.com/api-keys  
-- **ElevenLabs:** Get from https://elevenlabs.io/app/speech-synthesis (optional, for TTS)
-
-### 4. Python Configuration
-
-#### `~/.claude/hooks/pyproject.toml`
-```toml
-[project]
-name = "claude-hooks"
-version = "0.1.0"
-description = "Global Claude Code Hooks"
-readme = "README.md"
-requires-python = ">=3.13"
-dependencies = [
-    "python-dotenv",
-    "anthropic",
-    "openai",
-    "elevenlabs",
-    "pyttsx3"
-]
-```
-
-#### `~/.claude/hooks/.python-version`
-```
-3.13
-```
-
-### 5. Core Hook Scripts
-
-#### `~/.claude/hooks/utils/constants.py`
-```python
-#!/usr/bin/env -S uv run --script
-# /// script
-# requires-python = ">=3.8"
-# ///
-
-"""
-Constants for Claude Code Hooks.
-"""
-
-import os
-from pathlib import Path
-
-# Base directory for all logs - now in ~/.claude
-LOG_BASE_DIR = os.environ.get("CLAUDE_HOOKS_LOG_DIR", str(Path.home() / ".claude" / "logs"))
-
-# LLM Model Selections
-OPENAI_MODEL = "gpt-4o-mini"  # Fast, cost-effective OpenAI model
-ANTHROPIC_MODEL = "claude-3-5-haiku-20241022"  # Fast Anthropic model
-
-def get_session_log_dir(session_id: str) -> Path:
-    """Get the log directory for a specific session."""
-    return Path(LOG_BASE_DIR) / session_id
-
-def ensure_session_log_dir(session_id: str) -> Path:
-    """Ensure the log directory for a session exists."""
-    log_dir = get_session_log_dir(session_id)
-    log_dir.mkdir(parents=True, exist_ok=True)
-    return log_dir
-```
-
-#### `~/.claude/hooks/utils/llm/anth.py`
-```python
-#!/usr/bin/env -S uv run --script
-# /// script
-# requires-python = ">=3.8"
-# dependencies = [
-#     "anthropic",
-#     "python-dotenv",
-# ]
-# ///
-
-import os
-import sys
-from pathlib import Path
-from dotenv import load_dotenv
-
-# Add parent directory to path to import constants
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from constants import ANTHROPIC_MODEL
-
-def prompt_llm(prompt_text):
-    """Base Anthropic LLM prompting method using fastest model."""
-    load_dotenv(Path.home() / ".claude" / ".env")
-    
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        return None
-        
-    try:
-        import anthropic
-        client = anthropic.Anthropic(api_key=api_key)
-        
-        response = client.messages.create(
-            model=ANTHROPIC_MODEL,
-            max_tokens=150,
-            temperature=0,
-            messages=[{"role": "user", "content": prompt_text}]
-        )
-        
-        return response.content[0].text if response.content else None
-        
-    except Exception as e:
-        print(f"LLM Error: {e}", file=sys.stderr)
-        return None
-
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        result = prompt_llm(sys.argv[1])
-        if result:
-            print(result)
-```
-
-#### `~/.claude/hooks/utils/tts/elevenlabs_tts.py`
-```python
-#!/usr/bin/env -S uv run --script
-# /// script
-# requires-python = ">=3.11"
-# dependencies = [
-#     "elevenlabs",
-#     "python-dotenv",
-# ]
-# ///
-
-import os
-import sys
-from pathlib import Path
-from dotenv import load_dotenv
-
-# Load environment variables from ~/.claude/.env
-load_dotenv(Path.home() / ".claude" / ".env")
-
-# Get API key from environment
-api_key = os.getenv('ELEVENLABS_API_KEY')
-if not api_key:
-    sys.exit(1)
-
-def play_text(text):
-    """Generate and play text using ElevenLabs with personalized name."""
-    try:
-        from elevenlabs.client import ElevenLabs
-        from elevenlabs import play, stream
-        
-        client = ElevenLabs(api_key=api_key)
-        
-        # Get engineer name for personalization
-        engineer_name = os.getenv('ENGINEER_NAME', 'Engineer')
-        personalized_text = text.replace('Engineer', engineer_name)
-        
-        audio = client.generate(
-            text=personalized_text,
-            voice="Rachel",  # or your preferred voice
-            model="eleven_multilingual_v2"
-        )
-        
-        play(audio)
-        
-    except Exception as e:
-        print(f"ElevenLabs TTS Error: {e}", file=sys.stderr)
-        sys.exit(1)
-
-if __name__ == "__main__":
-    text = sys.argv[1] if len(sys.argv) > 1 else "Hello from ElevenLabs!"
-    play_text(text)
-```
-
-### 6. Main Hook Scripts
-
-#### `~/.claude/hooks/session_start.py`
-```python
-#!/usr/bin/env -S uv run --script
-# /// script
-# requires-python = ">=3.11"
-# dependencies = [
-#     "python-dotenv",
-# ]
-# ///
-
-import argparse
-import json
-import os
-import sys
-import subprocess
-from pathlib import Path
-from datetime import datetime
-from utils.constants import ensure_session_log_dir
-
-try:
-    from dotenv import load_dotenv
-    load_dotenv(Path.home() / ".claude" / ".env")
-except ImportError:
-    pass
-
-def log_session_start(session_id, input_data):
-    """Log session start event to session directory."""
-    log_dir = ensure_session_log_dir(session_id)
-    log_file = log_dir / 'session_start.json'
-    
-    if log_file.exists():
-        with open(log_file, 'r') as f:
-            try:
-                log_data = json.load(f)
-            except (json.JSONDecodeError, ValueError):
-                log_data = []
-    else:
-        log_data = []
-    
-    log_data.append(input_data)
-    
-    with open(log_file, 'w') as f:
-        json.dump(log_data, f, indent=2)
-
-def notify_session_start():
-    """Send notification about session start."""
-    try:
-        engineer_name = os.getenv('ENGINEER_NAME', 'Engineer')
-        tts_script = Path.home() / ".claude" / "hooks" / "utils" / "tts" / "elevenlabs_tts.py"
-        
-        if tts_script.exists() and os.getenv('ELEVENLABS_API_KEY'):
-            subprocess.run([
-                "uv", "run", str(tts_script), 
-                f"Hello {engineer_name}, Claude session started!"
-            ], check=False)
-    except Exception:
-        pass
-
-def main():
-    parser = argparse.ArgumentParser(description='Session Start Hook')
-    parser.add_argument('--notify', action='store_true', help='Enable notifications')
-    args = parser.parse_args()
-    
-    try:
-        input_data = json.load(sys.stdin)
-        session_id = input_data.get('session_id')
-        
-        if session_id:
-            log_session_start(session_id, input_data)
-            
-        if args.notify:
-            notify_session_start()
-            
-    except Exception as e:
-        print(f"Session Start Hook Error: {e}", file=sys.stderr)
-
-if __name__ == "__main__":
-    main()
-```
-
-#### `~/.claude/hooks/pre_tool_use.py`
-```python
-#!/usr/bin/env -S uv run --script
-# /// script
-# requires-python = ">=3.8"
-# dependencies = [
-#     "python-dotenv",
-# ]
-# ///
-
-import json
-import sys
-import re
-import subprocess
-import os
-from pathlib import Path
-from utils.constants import ensure_session_log_dir
-
-try:
-    from dotenv import load_dotenv
-    load_dotenv(Path.home() / ".claude" / ".env")
-except ImportError:
-    pass
-
-def is_dangerous_rm_command(command):
-    """Comprehensive detection of dangerous rm commands."""
-    normalized = ' '.join(command.lower().split())
-    
-    patterns = [
-        r'\brm\s+.*-[a-z]*r[a-z]*f',
-        r'\brm\s+.*-[a-z]*f[a-z]*r', 
-        r'\brm\s+--recursive\s+--force',
-        r'\brm\s+--force\s+--recursive',
-        r'\brm\s+-r\s+.*-f',
-        r'\brm\s+-f\s+.*-r',
-    ]
-    
-    for pattern in patterns:
-        if re.search(pattern, normalized):
-            return True
-    
-    dangerous_paths = [
-        '/', '/home', '/usr', '/var', '/etc', '/boot', '/sys', '/proc',
-        '~', '$HOME', '${HOME}', '/Users', '/Applications'
-    ]
-    
-    if re.search(r'\brm\s+.*-r', normalized):
-        for path in dangerous_paths:
-            if path in command:
-                return True
-                
-    return False
-
-def main():
-    try:
-        input_data = json.load(sys.stdin)
-        session_id = input_data.get('session_id')
-        
-        if session_id:
-            log_dir = ensure_session_log_dir(session_id)
-            log_file = log_dir / 'pre_tool_use.json'
-            
-            if log_file.exists():
-                with open(log_file, 'r') as f:
-                    try:
-                        log_data = json.load(f)
-                    except (json.JSONDecodeError, ValueError):
-                        log_data = []
-            else:
-                log_data = []
-            
-            log_data.append(input_data)
-            
-            with open(log_file, 'w') as f:
-                json.dump(log_data, f, indent=2)
-        
-        # Safety check for dangerous commands
-        tool_name = input_data.get('tool_name')
-        if tool_name == 'Bash':
-            command = input_data.get('payload', {}).get('command', '')
-            if is_dangerous_rm_command(command):
-                print("BLOCKED: Dangerous rm command detected", file=sys.stderr)
-                print(json.dumps({"block": True, "reason": "Dangerous rm command detected"}))
-                return
-        
-        print(json.dumps({"block": False}))
-        
-    except Exception as e:
-        print(f"Pre Tool Use Hook Error: {e}", file=sys.stderr)
-        print(json.dumps({"block": False}))
-
-if __name__ == "__main__":
-    main()
-```
-
-### 7. Initialize the Setup
+### Step 3: Download Hook System
 
 ```bash
 cd ~/.claude/hooks
 
-# Initialize Python environment
-uv init
-uv add python-dotenv anthropic openai elevenlabs pyttsx3
+# Download Python project configuration
+curl -fsSL https://raw.githubusercontent.com/PeterJBurke/claude-code-advanced-hooks/main/.claude/hooks/pyproject.toml -o pyproject.toml
+curl -fsSL https://raw.githubusercontent.com/PeterJBurke/claude-code-advanced-hooks/main/.claude/hooks/.env.example -o .env.example
+
+# Download all hook scripts
+curl -fsSL https://raw.githubusercontent.com/PeterJBurke/claude-code-advanced-hooks/main/.claude/hooks/session_start.py -o session_start.py
+curl -fsSL https://raw.githubusercontent.com/PeterJBurke/claude-code-advanced-hooks/main/.claude/hooks/pre_tool_use.py -o pre_tool_use.py
+curl -fsSL https://raw.githubusercontent.com/PeterJBurke/claude-code-advanced-hooks/main/.claude/hooks/post_tool_use.py -o post_tool_use.py
+curl -fsSL https://raw.githubusercontent.com/PeterJBurke/claude-code-advanced-hooks/main/.claude/hooks/notification.py -o notification.py
+curl -fsSL https://raw.githubusercontent.com/PeterJBurke/claude-code-advanced-hooks/main/.claude/hooks/user_prompt_submit.py -o user_prompt_submit.py
+curl -fsSL https://raw.githubusercontent.com/PeterJBurke/claude-code-advanced-hooks/main/.claude/hooks/subagent_stop.py -o subagent_stop.py
+curl -fsSL https://raw.githubusercontent.com/PeterJBurke/claude-code-advanced-hooks/main/.claude/hooks/pre_compact.py -o pre_compact.py
+curl -fsSL https://raw.githubusercontent.com/PeterJBurke/claude-code-advanced-hooks/main/.claude/hooks/stop.py -o stop.py
+
+# Download utility modules
+curl -fsSL https://raw.githubusercontent.com/PeterJBurke/claude-code-advanced-hooks/main/.claude/hooks/utils/constants.py -o utils/constants.py
+curl -fsSL https://raw.githubusercontent.com/PeterJBurke/claude-code-advanced-hooks/main/.claude/hooks/utils/summarizer.py -o utils/summarizer.py
+
+# Download LLM integrations
+curl -fsSL https://raw.githubusercontent.com/PeterJBurke/claude-code-advanced-hooks/main/.claude/hooks/utils/llm/anth.py -o utils/llm/anth.py
+curl -fsSL https://raw.githubusercontent.com/PeterJBurke/claude-code-advanced-hooks/main/.claude/hooks/utils/llm/oai.py -o utils/llm/oai.py
+
+# Download TTS integrations  
+curl -fsSL https://raw.githubusercontent.com/PeterJBurke/claude-code-advanced-hooks/main/.claude/hooks/utils/tts/elevenlabs_tts.py -o utils/tts/elevenlabs_tts.py
+curl -fsSL https://raw.githubusercontent.com/PeterJBurke/claude-code-advanced-hooks/main/.claude/hooks/utils/tts/openai_tts.py -o utils/tts/openai_tts.py
+curl -fsSL https://raw.githubusercontent.com/PeterJBurke/claude-code-advanced-hooks/main/.claude/hooks/utils/tts/pyttsx3_tts.py -o utils/tts/pyttsx3_tts.py
 
 # Make scripts executable
-chmod +x *.py
-chmod +x utils/**/*.py
-
-# Create log directory
-mkdir -p ~/.claude/logs
-
-# Test the setup
-echo '{"session_id": "test"}' | uv run session_start.py --notify
+chmod +x *.py utils/**/*.py
 ```
 
-### 8. Install StatusLine Dependencies
+### Step 4: Bulk Download Alternative
+
+Instead of downloading files individually, you can use this faster approach:
 
 ```bash
-# Install ccusage globally
+# Create a temporary directory and clone the repository
+cd /tmp
+git clone https://github.com/PeterJBurke/claude-code-advanced-hooks.git
+cd claude-code-advanced-hooks
+
+# Copy the .claude directory to your home directory
+cp -r .claude ~/.claude
+
+# Clean up
+cd ~ && rm -rf /tmp/claude-code-advanced-hooks
+
+# Make scripts executable
+chmod +x ~/.claude/hooks/*.py ~/.claude/hooks/utils/**/*.py
+```
+
+### Step 5: Initialize Python Environment
+
+```bash
+cd ~/.claude/hooks
+
+# Initialize and install dependencies
+uv sync
+
+# Create your environment file
+cp .env.example .env
+```
+
+### Step 6: Configure Environment Variables
+
+Edit `~/.claude/.env` (note: this file should be in the root .claude directory, not hooks):
+
+```bash
+# Move .env to the correct location
+mv ~/.claude/hooks/.env ~/.claude/.env
+
+# Edit with your favorite editor
+nano ~/.claude/.env
+# or
+vim ~/.claude/.env
+```
+
+Add your API keys:
+```bash
+# Required for AI features
+ANTHROPIC_API_KEY=your-anthropic-api-key-here
+OPENAI_API_KEY=your-openai-api-key-here
+
+# Optional for premium TTS
+ELEVENLABS_API_KEY=your-elevenlabs-api-key-here
+
+# Personalization
+ENGINEER_NAME=YourName
+```
+
+### Step 7: Install StatusLine Dependencies
+
+```bash
+# Install ccusage globally for usage tracking
 npm install -g ccusage
 
 # Test statusline
 npx -y ccusage statusline
 ```
 
-## Key Path Changes for Global Setup
+## 🔧 Advanced Setup Options
 
-When adapting the scripts, the following paths need to be changed:
+### Automated Installation Script
 
-### Original Project Paths → Global Paths
+Create your own installer script:
 
-| Original Path | Global Path | Notes |
-|---------------|-------------|-------|
-| `./.claude/hooks/` | `~/.claude/hooks/` | Hook scripts location |
-| `./.claude/.env` | `~/.claude/.env` | Environment file |
-| `./logs/` | `~/.claude/logs/` | Log directory |
-| Project-specific imports | Absolute imports | Utils module imports |
-
-### Environment Loading Changes
-
-Update all `.env` loading in Python scripts:
-```python
-# OLD: Relative to project
-env_path = Path(__file__).parent.parent.parent / ".env"
-
-# NEW: Global location  
-load_dotenv(Path.home() / ".claude" / ".env")
-```
-
-### Import Path Changes
-
-Update utility imports in hook scripts:
-```python
-# Add to beginning of each hook script
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path.home() / ".claude" / "hooks"))
-
-# Now imports work globally
-from utils.constants import ensure_session_log_dir
-```
-
-## Testing the Setup
-
-### 1. Test Basic Functionality
 ```bash
-# Test environment loading
-uv run ~/.claude/hooks/utils/llm/anth.py "Hello world"
+cat > install-claude-hooks.sh << 'EOF'
+#!/bin/bash
+set -e
 
-# Test TTS (if ElevenLabs key configured)
-uv run ~/.claude/hooks/utils/tts/elevenlabs_tts.py "Testing TTS"
+echo "🚀 Installing Claude Code Advanced Hooks globally..."
 
+# Check prerequisites
+if ! command -v uv &> /dev/null; then
+    echo "Installing uv..."
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    source ~/.bashrc
+fi
+
+if ! command -v node &> /dev/null; then
+    echo "❌ Node.js not found. Please install Node.js first."
+    exit 1
+fi
+
+# Create directory structure
+echo "📁 Creating directory structure..."
+mkdir -p ~/.claude/hooks/utils/{llm,tts}
+
+# Define base URL
+REPO_URL="https://raw.githubusercontent.com/PeterJBurke/claude-code-advanced-hooks/main"
+
+# Download function
+download_file() {
+    local url="$1"
+    local output="$2"
+    echo "⬇️  Downloading $(basename "$output")..."
+    curl -fsSL "$url" -o "$output"
+}
+
+# Download configuration files
+download_file "$REPO_URL/.claude/settings.json" ~/.claude/settings.json
+download_file "$REPO_URL/.claude/CLAUDE.md" ~/.claude/CLAUDE.md
+
+# Download hook files
+cd ~/.claude/hooks
+download_file "$REPO_URL/.claude/hooks/pyproject.toml" pyproject.toml
+download_file "$REPO_URL/.claude/hooks/.env.example" .env.example
+
+# Download all hook scripts
+for script in session_start.py pre_tool_use.py post_tool_use.py notification.py user_prompt_submit.py subagent_stop.py pre_compact.py stop.py; do
+    download_file "$REPO_URL/.claude/hooks/$script" "$script"
+done
+
+# Download utilities
+download_file "$REPO_URL/.claude/hooks/utils/constants.py" utils/constants.py
+download_file "$REPO_URL/.claude/hooks/utils/summarizer.py" utils/summarizer.py
+
+# Download LLM modules
+download_file "$REPO_URL/.claude/hooks/utils/llm/anth.py" utils/llm/anth.py
+download_file "$REPO_URL/.claude/hooks/utils/llm/oai.py" utils/llm/oai.py
+
+# Download TTS modules
+download_file "$REPO_URL/.claude/hooks/utils/tts/elevenlabs_tts.py" utils/tts/elevenlabs_tts.py
+download_file "$REPO_URL/.claude/hooks/utils/tts/openai_tts.py" utils/tts/openai_tts.py
+download_file "$REPO_URL/.claude/hooks/utils/tts/pyttsx3_tts.py" utils/tts/pyttsx3_tts.py
+
+# Make executable
+chmod +x *.py utils/**/*.py
+
+# Install Python dependencies
+echo "🐍 Installing Python dependencies..."
+uv sync
+
+# Set up environment
+if [ ! -f ~/.claude/.env ]; then
+    cp .env.example ~/.claude/.env
+    echo "📝 Created ~/.claude/.env - please edit with your API keys"
+fi
+
+# Install ccusage
+echo "📊 Installing ccusage for statusline..."
+npm install -g ccusage
+
+echo "✅ Installation complete!"
+echo ""
+echo "Next steps:"
+echo "1. Edit ~/.claude/.env with your API keys"
+echo "2. Test with: echo '{\"session_id\": \"test\"}' | uv run ~/.claude/hooks/session_start.py"
+echo "3. Start Claude Code in any project!"
+EOF
+
+chmod +x install-claude-hooks.sh
+```
+
+## 🧪 Testing the Installation
+
+### Basic Functionality Tests
+
+```bash
 # Test hook execution
-echo '{"session_id": "test-123"}' | uv run ~/.claude/hooks/session_start.py
+echo '{"session_id": "test-global"}' | uv run ~/.claude/hooks/session_start.py --notify
+
+# Test AI integration (requires API key)
+uv run ~/.claude/hooks/utils/llm/anth.py "Hello from global installation"
+
+# Test TTS (requires API key)
+uv run ~/.claude/hooks/utils/tts/elevenlabs_tts.py "Global installation test"
+
+# Test statusline
+npx -y ccusage statusline
 ```
 
-### 2. Test Claude Code Integration
+### Integration Test
+
 ```bash
-# Start Claude Code in any project
-claude
+# Create a test project
+mkdir ~/test-claude-project
+cd ~/test-claude-project
 
-# Hooks should now execute automatically
-# Check logs in ~/.claude/logs/
+# Start Claude Code (hooks should activate automatically)
+claude
 ```
 
-### 3. Verify StatusLine
-The statusline should appear at the bottom of your Claude Code interface showing usage statistics.
+## 🔍 Verification
 
-## Troubleshooting
+After installation, verify everything is working:
+
+```bash
+# Check directory structure
+ls -la ~/.claude/
+ls -la ~/.claude/hooks/
+
+# Check Python environment
+cd ~/.claude/hooks && uv run --version
+
+# Check permissions
+ls -la ~/.claude/hooks/*.py | head -5
+
+# Test configuration
+cat ~/.claude/settings.json | head -10
+```
+
+## 🔧 Troubleshooting
 
 ### Common Issues
 
-1. **uv not found**
-   ```bash
-   curl -LsSf https://astral.sh/uv/install.sh | sh
-   source ~/.bashrc  # or ~/.zshrc
-   ```
-
-2. **Python dependencies not installing**
-   ```bash
-   cd ~/.claude/hooks
-   uv sync
-   ```
-
-3. **Permission denied errors**
+1. **Permission Denied Errors**
    ```bash
    chmod +x ~/.claude/hooks/*.py
-   chmod +x ~/.claude/hooks/utils/**/*.py
+   find ~/.claude/hooks -name "*.py" -exec chmod +x {} \;
    ```
 
-4. **API key errors**
-   - Verify keys in `~/.claude/.env`
-   - Test with: `cat ~/.claude/.env | grep API_KEY`
+2. **Python Dependencies Not Installing**
+   ```bash
+   cd ~/.claude/hooks
+   uv sync --reinstall
+   ```
 
-5. **TTS not working**
-   - Check ElevenLabs API key validity
-   - Test with: `uv run ~/.claude/hooks/utils/tts/elevenlabs_tts.py "test"`
+3. **API Keys Not Working**
+   ```bash
+   # Check environment file location
+   ls -la ~/.claude/.env
+   
+   # Test loading
+   cd ~/.claude/hooks
+   uv run python -c "import os; from dotenv import load_dotenv; load_dotenv('../.env'); print('ANTHROPIC_API_KEY' in os.environ)"
+   ```
 
-6. **Logs not appearing**
-   - Check directory permissions: `ls -la ~/.claude/logs/`
-   - Verify log path in constants.py
+4. **Hooks Not Executing**
+   ```bash
+   # Check settings file
+   cat ~/.claude/settings.json | grep -A5 hooks
+   
+   # Test direct execution
+   echo '{"session_id": "debug"}' | uv run ~/.claude/hooks/session_start.py
+   ```
 
-## Features Enabled
+5. **Download Failures**
+   ```bash
+   # Test connectivity
+   curl -I https://raw.githubusercontent.com/PeterJBurke/claude-code-advanced-hooks/main/.claude/settings.json
+   
+   # Use git clone as backup
+   git clone https://github.com/PeterJBurke/claude-code-advanced-hooks.git /tmp/claude-hooks
+   cp -r /tmp/claude-hooks/.claude ~/
+   ```
 
-With this setup, you get:
+### Path Updates Required
 
-- ✅ **Comprehensive Logging**: All Claude interactions logged to `~/.claude/logs/`
-- ✅ **Safety Checks**: Dangerous `rm` commands blocked automatically  
-- ✅ **TTS Notifications**: Audio feedback for session events
-- ✅ **AI Summarization**: LLM-powered event summaries
-- ✅ **Usage Tracking**: StatusLine integration with ccusage
-- ✅ **Browser Integration**: MCP server for web interactions
-- ✅ **Global Configuration**: Works across all projects automatically
+When using the global installation, all path references are automatically updated to:
 
-## Customization
+| Component | Global Path |
+|-----------|-------------|
+| Settings | `~/.claude/settings.json` |
+| Environment | `~/.claude/.env` |
+| Hook Scripts | `~/.claude/hooks/*.py` |
+| Utilities | `~/.claude/hooks/utils/` |
+| Logs | `~/.claude/logs/` |
 
-### Adding New Hooks
-Create new hook scripts in `~/.claude/hooks/` following the uv script format, then add them to `settings.json`.
+## 🎯 Features Enabled
 
-### Changing TTS Voice
-Edit the voice parameter in `elevenlabs_tts.py`:
-```python
-voice="Rachel"  # Change to your preferred voice
-```
+With this global setup, you get across ALL your projects:
 
-### Custom Log Directory
-Set environment variable:
-```bash
-export CLAUDE_HOOKS_LOG_DIR="/path/to/custom/logs"
-```
+- ✅ **Comprehensive Logging**: All interactions logged to `~/.claude/logs/`
+- ✅ **Safety Checks**: Dangerous commands blocked automatically  
+- ✅ **TTS Notifications**: Audio feedback for all sessions
+- ✅ **AI Summarization**: Intelligent event descriptions
+- ✅ **Usage Tracking**: StatusLine integration
+- ✅ **Browser Integration**: MCP server support
+- ✅ **Global Consistency**: Same experience everywhere
 
-### Adding New APIs
-1. Add API keys to `~/.claude/.env`
-2. Add dependencies to `pyproject.toml` 
-3. Create utility scripts in `utils/`
-4. Reference in hook scripts
+## 📚 Resources
 
-This setup provides a robust, feature-rich Claude Code environment that works consistently across all your projects!
+- **GitHub Repository**: https://github.com/PeterJBurke/claude-code-advanced-hooks
+- **Project-Specific Setup**: See repository README.md
+- **Claude Code Documentation**: https://docs.anthropic.com/en/docs/claude-code
+
+## 🤝 Contributing
+
+Found an issue or want to improve the installation process? 
+
+1. Report bugs at https://github.com/PeterJBurke/claude-code-advanced-hooks/issues
+2. Suggest improvements for this installation guide
+3. Help create the automated installer script
+
+---
+
+**🎉 Ready to experience Claude Code with advanced hooks globally? Follow the installation steps above and enjoy enhanced AI interactions across all your projects!**
