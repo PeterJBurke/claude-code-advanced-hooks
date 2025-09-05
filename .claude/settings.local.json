@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv run:*)",
+      "Read(/Users/peterburke/.claude/**)",
+      "Read(/Users/peterburke/**)",
+      "Read(/Users/peterburke/.config/**)",
+      "Bash(sudo:*)",
+      "Bash(claude --version)",
+      "Bash(uv:*)",
+      "Bash(source .env)",
+      "Bash(source:*)",
+      "Bash(echo:*)",
+      "WebFetch(domain:ccusage.com)",
+      "Bash(bun x ccusage:*)",
+      "Bash(npx -y ccusage:*)",
+      "Bash(grep:*)",
+      "Bash(git init:*)",
+      "Bash(gh repo create:*)",
+      "Bash(git add:*)",
+      "Bash(git branch:*)",
+      "Bash(git remote add:*)",
+      "Bash(git push:*)",
+      "Bash(git commit:*)",
+      "Bash(git reset:*)",
+      "Bash(git rm:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(tree:*)",
+      "Bash(mv:*)",
+      "Bash(cp:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
