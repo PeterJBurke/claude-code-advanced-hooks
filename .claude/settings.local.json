@@ -28,7 +28,9 @@
       "Bash(tree:*)",
       "Bash(mv:*)",
       "Bash(cp:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "WebSearch",
+      "Bash(bash:*)"
     ],
     "deny": [],
     "ask": []

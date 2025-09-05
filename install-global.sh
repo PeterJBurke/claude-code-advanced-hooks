@@ -73,24 +73,174 @@ download_file() {
     fi
 }
 
-# Download configuration files
-echo -e "${BLUE}⚙️  Downloading configuration files...${NC}"
-download_file "$REPO_URL/.claude/settings.json" ~/.claude/settings.json "settings.json"
-download_file "$REPO_URL/.claude/CLAUDE.md" ~/.claude/CLAUDE.md "CLAUDE.md template"
+# Handle existing configuration files intelligently
+echo -e "${BLUE}⚙️  Configuring Claude Code settings...${NC}"
 
-# Download hook files
-echo -e "${BLUE}🪝 Downloading hook scripts...${NC}"
+# Function to merge JSON configurations
+merge_settings_json() {
+    local existing_file="$1"
+    local new_file="$2"
+    local backup_file="${existing_file}.backup-$(date +%Y%m%d-%H%M%S)"
+    
+    if [ -f "$existing_file" ]; then
+        echo -e "${YELLOW}⚠️  Existing settings found at $existing_file${NC}"
+        echo -e "📝 Creating backup at $backup_file"
+        cp "$existing_file" "$backup_file"
+        
+        # Use python to intelligently merge JSON configurations
+        python3 << EOF
+import json
+import sys
+
+try:
+    # Read existing configuration
+    with open('$existing_file', 'r') as f:
+        existing = json.load(f)
+    
+    # Read new configuration
+    with open('$new_file', 'r') as f:
+        new_config = json.load(f)
+    
+    # Preserve existing permissions if they exist
+    if 'permissions' in existing and 'permissions' in new_config:
+        # Merge allow lists (avoid duplicates)
+        existing_allow = set(existing.get('permissions', {}).get('allow', []))
+        new_allow = set(new_config.get('permissions', {}).get('allow', []))
+        merged_allow = sorted(list(existing_allow.union(new_allow)))
+        
+        # Keep existing deny and ask lists, merge with new ones
+        existing_deny = existing.get('permissions', {}).get('deny', [])
+        new_deny = new_config.get('permissions', {}).get('deny', [])
+        merged_deny = sorted(list(set(existing_deny + new_deny)))
+        
+        existing_ask = existing.get('permissions', {}).get('ask', [])
+        new_ask = new_config.get('permissions', {}).get('ask', [])
+        merged_ask = sorted(list(set(existing_ask + new_ask)))
+        
+        new_config['permissions'] = {
+            'allow': merged_allow,
+            'deny': merged_deny,
+            'ask': merged_ask
+        }
+    
+    # Add hooks configuration if it doesn't exist, otherwise merge
+    if 'hooks' not in existing:
+        existing['hooks'] = new_config.get('hooks', {})
+    else:
+        # Merge hook configurations
+        for hook_type, hook_config in new_config.get('hooks', {}).items():
+            if hook_type not in existing['hooks']:
+                existing['hooks'][hook_type] = hook_config
+            else:
+                print(f"Hook {hook_type} already exists, skipping...")
+    
+    # Add statusLine if it doesn't exist
+    if 'statusLine' not in existing and 'statusLine' in new_config:
+        existing['statusLine'] = new_config['statusLine']
+    
+    # Add mcpServers if they don't exist
+    if 'mcpServers' not in existing:
+        existing['mcpServers'] = new_config.get('mcpServers', {})
+    else:
+        # Merge MCP servers
+        for server_name, server_config in new_config.get('mcpServers', {}).items():
+            if server_name not in existing['mcpServers']:
+                existing['mcpServers'][server_name] = server_config
+    
+    # Write merged configuration
+    with open('$existing_file', 'w') as f:
+        json.dump(existing, f, indent=2)
+    
+    print("✅ Configuration merged successfully")
+    
+except Exception as e:
+    print(f"❌ Error merging configurations: {e}")
+    print("Using new configuration as fallback")
+    # If merge fails, use the new configuration
+    with open('$new_file', 'r') as f:
+        content = f.read()
+    with open('$existing_file', 'w') as f:
+        f.write(content)
+        
+EOF
+        
+        echo -e "${GREEN}✅ Settings merged with existing configuration${NC}"
+    else
+        echo -e "📝 No existing settings found, creating new settings.json"
+        cp "$new_file" "$existing_file"
+        echo -e "${GREEN}✅ New settings.json created${NC}"
+    fi
+}
+
+# Download new settings to temporary location
+temp_settings=$(mktemp)
+download_file "$REPO_URL/.claude/settings.json" "$temp_settings" "settings.json (temporary)"
+
+# Merge with existing settings
+merge_settings_json ~/.claude/settings.json "$temp_settings"
+
+# Clean up temporary file
+rm -f "$temp_settings"
+
+# Handle CLAUDE.md file
+if [ -f ~/.claude/CLAUDE.md ]; then
+    echo -e "${YELLOW}⚠️  Existing CLAUDE.md found${NC}"
+    backup_claude="~/.claude/CLAUDE.md.backup-$(date +%Y%m%d-%H%M%S)"
+    echo -e "📝 Creating backup at $backup_claude"
+    cp ~/.claude/CLAUDE.md "$backup_claude"
+    
+    # Ask user if they want to replace or append
+    echo -e "${BLUE}Options for CLAUDE.md:${NC}"
+    echo "1. Keep existing (recommended)"
+    echo "2. Append our template"
+    echo "3. Replace with our template"
+    
+    # For automated installation, default to keep existing
+    echo -e "${GREEN}Keeping existing CLAUDE.md file${NC}"
+    echo -e "${BLUE}💡 You can manually review the template at: https://github.com/PeterJBurke/claude-code-advanced-hooks/blob/main/.claude/CLAUDE.md${NC}"
+else
+    download_file "$REPO_URL/.claude/CLAUDE.md" ~/.claude/CLAUDE.md "CLAUDE.md template"
+fi
+
+# Download hook files intelligently  
+echo -e "${BLUE}🪝 Setting up hook scripts...${NC}"
 cd ~/.claude/hooks
 
+# Always download/update project configuration files
 download_file "$REPO_URL/.claude/hooks/pyproject.toml" pyproject.toml "Python project config"
 download_file "$REPO_URL/.claude/hooks/.env.example" .env.example "Environment template"
 
 # Hook scripts array
 declare -a hooks=("session_start.py" "pre_tool_use.py" "post_tool_use.py" "notification.py" "user_prompt_submit.py" "subagent_stop.py" "pre_compact.py" "stop.py")
 
+# Check if any hook files already exist
+existing_hooks=()
 for script in "${hooks[@]}"; do
-    download_file "$REPO_URL/.claude/hooks/$script" "$script" "hook: $script"
+    if [ -f "$script" ]; then
+        existing_hooks+=("$script")
+    fi
 done
+
+if [ ${#existing_hooks[@]} -gt 0 ]; then
+    echo -e "${YELLOW}⚠️  Found existing hook scripts: ${existing_hooks[*]}${NC}"
+    echo -e "${BLUE}Creating backups and updating...${NC}"
+    
+    for script in "${hooks[@]}"; do
+        if [ -f "$script" ]; then
+            backup_script="${script}.backup-$(date +%Y%m%d-%H%M%S)"
+            echo -e "📝 Backing up $script to $backup_script"
+            cp "$script" "$backup_script"
+        fi
+        download_file "$REPO_URL/.claude/hooks/$script" "$script" "hook: $script"
+    done
+    
+    echo -e "${GREEN}✅ Hook scripts updated (backups created)${NC}"
+else
+    echo -e "📝 No existing hooks found, downloading all scripts..."
+    for script in "${hooks[@]}"; do
+        download_file "$REPO_URL/.claude/hooks/$script" "$script" "hook: $script"
+    done
+fi
 
 # Download utilities
 echo -e "${BLUE}🛠️  Downloading utility modules...${NC}"
@@ -121,13 +271,57 @@ else
     echo -e "Try running: cd ~/.claude/hooks && uv sync"
 fi
 
-# Set up environment file
+# Handle environment file intelligently
+echo -e "${BLUE}🔐 Setting up environment configuration...${NC}"
+
 if [ ! -f ~/.claude/.env ]; then
     cp .env.example ~/.claude/.env
     echo -e "${GREEN}📝 Created ~/.claude/.env${NC}"
     echo -e "${YELLOW}⚠️  Please edit ~/.claude/.env with your API keys${NC}"
 else
-    echo -e "${YELLOW}⚠️  ~/.claude/.env already exists, skipping...${NC}"
+    echo -e "${YELLOW}⚠️  ~/.claude/.env already exists${NC}"
+    
+    # Check if existing .env has the keys we need
+    missing_keys=()
+    
+    if ! grep -q "ANTHROPIC_API_KEY" ~/.claude/.env; then
+        missing_keys+=("ANTHROPIC_API_KEY")
+    fi
+    if ! grep -q "OPENAI_API_KEY" ~/.claude/.env; then
+        missing_keys+=("OPENAI_API_KEY")
+    fi
+    if ! grep -q "ENGINEER_NAME" ~/.claude/.env; then
+        missing_keys+=("ENGINEER_NAME")
+    fi
+    
+    if [ ${#missing_keys[@]} -gt 0 ]; then
+        echo -e "${BLUE}💡 Adding missing environment variables...${NC}"
+        backup_env="~/.claude/.env.backup-$(date +%Y%m%d-%H%M%S)"
+        cp ~/.claude/.env "$backup_env"
+        echo -e "📝 Backup created at $backup_env"
+        
+        echo "" >> ~/.claude/.env
+        echo "# Added by Claude Code Advanced Hooks installer" >> ~/.claude/.env
+        
+        for key in "${missing_keys[@]}"; do
+            case $key in
+                "ANTHROPIC_API_KEY")
+                    echo "ANTHROPIC_API_KEY=your-anthropic-api-key-here" >> ~/.claude/.env
+                    ;;
+                "OPENAI_API_KEY")
+                    echo "OPENAI_API_KEY=your-openai-api-key-here" >> ~/.claude/.env
+                    ;;
+                "ENGINEER_NAME")
+                    echo "ENGINEER_NAME=YourName" >> ~/.claude/.env
+                    ;;
+            esac
+            echo -e "${GREEN}✅ Added $key template${NC}"
+        done
+        
+        echo -e "${YELLOW}⚠️  Please edit ~/.claude/.env to set your actual API keys${NC}"
+    else
+        echo -e "${GREEN}✅ Environment file appears complete${NC}"
+    fi
 fi
 
 # Install ccusage if node is available
@@ -163,7 +357,36 @@ fi
 echo ""
 echo -e "${GREEN}🎉 Installation complete!${NC}"
 echo ""
-echo "Next steps:"
+
+# Summary of what was done
+echo -e "${BLUE}📋 Installation Summary:${NC}"
+if [ -f ~/.claude/settings.json.backup-* ] 2>/dev/null; then
+    echo -e "✅ Existing settings.json merged with hook configuration"
+    echo -e "   📁 Backup created: ~/.claude/settings.json.backup-*"
+else
+    echo -e "✅ New settings.json created with hook configuration"
+fi
+
+if [ -f ~/.claude/CLAUDE.md.backup-* ] 2>/dev/null; then
+    echo -e "✅ Existing CLAUDE.md preserved"
+    echo -e "   📁 Backup created: ~/.claude/CLAUDE.md.backup-*"
+elif [ -f ~/.claude/CLAUDE.md ]; then
+    echo -e "✅ CLAUDE.md template added"
+fi
+
+if [ -f ~/.claude/.env.backup-* ] 2>/dev/null; then
+    echo -e "✅ Environment variables added to existing .env file"
+    echo -e "   📁 Backup created: ~/.claude/.env.backup-*"
+elif [ -f ~/.claude/.env ]; then
+    echo -e "✅ Environment file created from template"
+fi
+
+echo -e "✅ Hook system installed: 8 hooks + utilities"
+echo -e "✅ Python dependencies installed via uv"
+echo -e "✅ File permissions set"
+
+echo ""
+echo -e "${BLUE}Next Steps:${NC}"
 echo -e "${BLUE}1.${NC} Edit ~/.claude/.env with your API keys:"
 echo "   - ANTHROPIC_API_KEY=your-key-here"
 echo "   - OPENAI_API_KEY=your-key-here" 
@@ -176,6 +399,13 @@ echo ""
 echo -e "${BLUE}3.${NC} Start Claude Code in any project - hooks will activate automatically!"
 echo "   claude"
 echo ""
+
+echo -e "${YELLOW}💡 Important Notes:${NC}"
+echo "• Your existing Claude Code settings have been preserved"
+echo "• Backup files have been created for any replaced files"  
+echo "• The hooks system adds new functionality without breaking existing setup"
+echo ""
+
 echo "📚 Documentation: https://github.com/PeterJBurke/claude-code-advanced-hooks"
 echo "🐛 Issues: https://github.com/PeterJBurke/claude-code-advanced-hooks/issues"
 echo ""

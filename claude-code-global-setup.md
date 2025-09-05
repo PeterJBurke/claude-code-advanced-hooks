@@ -10,7 +10,13 @@ This guide will automatically download and install the Claude Code advanced hook
 curl -fsSL https://raw.githubusercontent.com/PeterJBurke/claude-code-advanced-hooks/main/install-global.sh | bash
 ```
 
-*Don't have the installer script yet? Use the manual installation below, or help create it by following the manual steps!*
+This installer is **smart** and preserves your existing Claude Code configuration:
+
+✅ **Intelligent Merging**: Merges hook configuration with existing `settings.json`  
+✅ **Automatic Backups**: Creates timestamped backups of all existing files  
+✅ **Environment Handling**: Adds missing API keys to existing `.env` files  
+✅ **Non-Destructive**: Never deletes existing configurations  
+✅ **Permission Preservation**: Keeps your existing permission settings
 
 ## 📋 Manual Installation
 

@@ -41,7 +41,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run /Users/peterburke/Documents/Code/ClaudeHelloWorld/.claude/hooks/notification.py"
+            "command": "uv run /Users/peterburke/Documents/Code/ClaudeHelloWorld/.claude/hooks/notification.py --notify"
           }
         ]
       }
