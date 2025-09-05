@@ -12,10 +12,19 @@ A comprehensive, production-ready hook system for Claude Code that provides inte
 - **📝 Comprehensive Logging**: Detailed session logs with structured JSON data
 - **🔄 8 Hook Types**: Complete lifecycle coverage from session start to stop
 
+## 🏗️ Architecture Overview
+
+This repository provides two deployment strategies:
+
+1. **Project-Specific**: Hook system works only in this project directory
+2. **Global Installation**: Hook system works across all Claude Code projects
+
+The directory structure follows Claude Code conventions:
+
 ## 📁 Project Structure
 
 ```
-ClaudeHelloWorld/
+claude-code-advanced-hooks/
 ├── .claude/
 │   ├── settings.json              # Main Claude Code configuration
 │   ├── settings.local.json        # Local permissions overrides  
@@ -47,24 +56,24 @@ ClaudeHelloWorld/
 └── README.md                      # This file
 ```
 
-## 🛠️ Quick Start
+## 🛠️ Installation Options
 
-### 1. Prerequisites
+### Option 1: Project-Specific Setup (Recommended for Testing)
 
+#### 1. Prerequisites
 ```bash
 # Install uv (Python package manager)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install Node.js (for ccusage statusline)
+# Install Node.js (for statusline)
 brew install node  # macOS
 # or download from nodejs.org
 ```
 
-### 2. Clone and Setup
-
+#### 2. Clone and Setup
 ```bash
-git clone https://github.com/yourusername/claude-code-hooks.git
-cd claude-code-hooks
+git clone https://github.com/PeterJBurke/claude-code-advanced-hooks.git
+cd claude-code-advanced-hooks
 
 # Setup Python environment
 cd .claude/hooks
@@ -72,10 +81,38 @@ uv sync
 
 # Configure environment variables
 cp .env.example .env
-# Edit .env with your API keys (see Environment section)
+# Edit .env with your API keys (see API Keys section below)
 ```
 
-### 3. API Keys Setup
+#### 3. Test the Installation
+```bash
+# Test hook execution
+echo '{"session_id": "test"}' | uv run session_start.py --notify
+
+# Test TTS (if configured)
+uv run utils/tts/elevenlabs_tts.py "Hello World"
+
+# Start Claude Code to activate hooks
+claude
+```
+
+### Option 2: Global Installation (Production Setup)
+
+For system-wide installation across all projects, see the **[Global Setup Guide](./claude-code-global-setup.md)** - a comprehensive 400+ line guide that covers:
+
+- Complete `~/.claude` configuration
+- Automatic activation for all projects
+- Advanced troubleshooting
+- Custom integrations
+
+## 📋 Repository Location
+
+**GitHub Repository:** https://github.com/PeterJBurke/claude-code-advanced-hooks  
+**Local Path:** `/Users/peterburke/Documents/Code/ClaudeHelloWorld`
+
+The local repository is located at `/Users/peterburke/Documents/Code/ClaudeHelloWorld` and contains all source files, configuration, and documentation.
+
+## 🔑 API Keys Setup
 
 Create `.claude/hooks/.env`:
 ```bash
