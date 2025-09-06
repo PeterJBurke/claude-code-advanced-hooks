@@ -51,21 +51,91 @@ def get_tts_script_path():
     return None
 
 
-def announce_notification():
-    """Announce that the agent needs user input."""
+def get_notification_message(notification_data):
+    """
+    Generate an appropriate TTS message based on notification content.
+    """
+    engineer_name = os.getenv('ENGINEER_NAME', '').strip()
+    name_prefix = f"{engineer_name}, " if engineer_name else ""
+    
+    # Extract notification content
+    payload = notification_data.get('payload', {})
+    notification_type = payload.get('type', '')
+    message = payload.get('message', '')
+    title = payload.get('title', '')
+    
+    # Check for user input/decision requests
+    user_input_indicators = [
+        'input', 'decision', 'choose', 'select', 'confirm', 'approve',
+        'would you like', 'do you want', 'please', 'permission',
+        'continue?', 'proceed?', 'yes/no', 'y/n'
+    ]
+    
+    full_text = f"{title} {message}".lower()
+    
+    # Debug output if enabled
+    if os.getenv('DEBUG_NOTIFICATIONS'):
+        print(f"Analyzing notification text: '{full_text}'", file=sys.stderr)
+    
+    # Check if this looks like a user input request
+    matched_indicators = [indicator for indicator in user_input_indicators if indicator in full_text]
+    if matched_indicators:
+        messages = [
+            f"{name_prefix}Your input is needed",
+            f"{name_prefix}Claude needs your decision", 
+            f"{name_prefix}Please check Claude",
+            f"{name_prefix}User input required"
+        ]
+        selected_message = random.choice(messages)
+        if os.getenv('DEBUG_NOTIFICATIONS'):
+            print(f"Matched user input indicators: {matched_indicators}", file=sys.stderr)
+            print(f"Selected TTS message: '{selected_message}'", file=sys.stderr)
+        return selected_message
+    
+    # Check for error/warning notifications
+    if 'error' in full_text or 'warning' in full_text or 'failed' in full_text:
+        messages = [
+            f"{name_prefix}Error occurred, check Claude",
+            f"{name_prefix}Something needs attention",
+            f"{name_prefix}Check for issues"
+        ]
+        selected_message = random.choice(messages)
+        if os.getenv('DEBUG_NOTIFICATIONS'):
+            print(f"Matched error/warning indicators", file=sys.stderr)
+            print(f"Selected TTS message: '{selected_message}'", file=sys.stderr)
+        return selected_message
+    
+    # Check for completion/success notifications
+    completion_words = ['complete', 'finished', 'done', 'success']
+    matched_completion = [word for word in completion_words if word in full_text]
+    if matched_completion:
+        messages = [
+            f"{name_prefix}Task completed",
+            f"{name_prefix}Claude is done",
+            f"{name_prefix}Work finished"
+        ]
+        selected_message = random.choice(messages)
+        if os.getenv('DEBUG_NOTIFICATIONS'):
+            print(f"Matched completion indicators: {matched_completion}", file=sys.stderr)
+            print(f"Selected TTS message: '{selected_message}'", file=sys.stderr)
+        return selected_message
+    
+    # Default message for other notifications
+    default_message = f"{name_prefix}Notification from Claude"
+    if os.getenv('DEBUG_NOTIFICATIONS'):
+        print(f"No specific indicators matched, using default TTS message: '{default_message}'", file=sys.stderr)
+    return default_message
+
+
+def announce_notification(notification_data):
+    """Announce notification with context-aware TTS message."""
     try:
         tts_script = get_tts_script_path()
         if not tts_script:
             return  # No TTS scripts available
         
-        # Get engineer name if available
-        engineer_name = os.getenv('ENGINEER_NAME', '').strip()
-        
-        # Create notification message with 30% chance to include name
-        if engineer_name and random.random() < 0.3:
-            notification_message = f"{engineer_name}, Claude is done"
-        else:
-            notification_message = "Claude is done"
+        # Get context-aware message
+        notification_message = get_notification_message(notification_data)
         
         # Call the TTS script with the notification message
         result = subprocess.run([
@@ -79,6 +149,7 @@ def announce_notification():
         # For debugging - check if we should show errors
         if result.returncode != 0 and os.getenv('DEBUG_NOTIFICATIONS'):
             print(f"TTS Error: {result.stderr}", file=sys.stderr)
+            print(f"TTS Message was: {notification_message}", file=sys.stderr)
         
     except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as e:
         # For debugging - check if we should show errors
@@ -126,9 +197,13 @@ def main():
         with open(log_file, 'w') as f:
             json.dump(log_data, f, indent=2)
         
+        # Debug: Log notification content if debugging is enabled
+        if os.getenv('DEBUG_NOTIFICATIONS'):
+            print(f"Notification received: {json.dumps(input_data, indent=2)}", file=sys.stderr)
+        
         # Announce notification via TTS only if --notify flag is set
         if args.notify:
-            announce_notification()
+            announce_notification(input_data)
         
         sys.exit(0)
         
