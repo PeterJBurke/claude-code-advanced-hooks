@@ -398,6 +398,21 @@ cat ~/.claude/settings.json | head -10
    cp -r /tmp/claude-hooks/.claude ~/
    ```
 
+6. **TTS Notifications Not Working**
+   ```bash
+   # Test notification system with debugging
+   echo '{"session_id": "test", "payload": {"message": "Would you like to continue?", "title": "Input Required"}}' | DEBUG_NOTIFICATIONS=1 uv run ~/.claude/hooks/notification.py --notify
+   
+   # Check available TTS providers
+   ls -la ~/.claude/hooks/utils/tts/
+   
+   # Test specific TTS script directly
+   uv run ~/.claude/hooks/utils/tts/elevenlabs_tts.py "Test message"
+   
+   # Verify API keys are set
+   grep -E "ELEVENLABS_API_KEY|OPENAI_API_KEY|ENGINEER_NAME" ~/.claude/.env
+   ```
+
 ### Path Updates Required
 
 When using the global installation, all path references are automatically updated to:
@@ -416,7 +431,10 @@ With this global setup, you get across ALL your projects:
 
 - ✅ **Comprehensive Logging**: All interactions logged to `~/.claude/logs/`
 - ✅ **Safety Checks**: Dangerous commands blocked automatically  
-- ✅ **TTS Notifications**: Audio feedback for all sessions
+- ✅ **Context-Aware TTS**: Smart audio notifications that tell you exactly what's needed:
+  - 🚨 "Your input is needed" when user decisions are required
+  - ⚠️ "Error occurred, check Claude" for warnings and issues  
+  - ✅ "Task completed" for successful operations
 - ✅ **AI Summarization**: Intelligent event descriptions
 - ✅ **Usage Tracking**: StatusLine integration
 - ✅ **Browser Integration**: MCP server support

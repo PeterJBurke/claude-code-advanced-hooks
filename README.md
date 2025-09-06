@@ -5,7 +5,10 @@ A comprehensive, production-ready hook system for Claude Code that provides inte
 ## 🚀 Features
 
 - **🛡️ Safety First**: Automatic detection and blocking of dangerous commands (like `rm -rf`)
-- **🔊 Multi-Modal TTS**: Audio notifications via ElevenLabs, OpenAI, or offline pyttsx3
+- **🔊 Context-Aware TTS**: Smart audio notifications that adapt to different scenarios:
+  - 🚨 "Your input is needed" when Claude requires user decisions
+  - ⚠️ "Error occurred, check Claude" for warnings and issues
+  - ✅ "Task completed" for successful operations
 - **🤖 AI Summaries**: LLM-powered event summarization using Claude or GPT models
 - **📊 Usage Tracking**: Integrated statusline with ccusage for API usage monitoring
 - **🌐 Web Integration**: Browser MCP server for enhanced web interactions
