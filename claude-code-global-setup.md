@@ -18,6 +18,54 @@ This installer is **smart** and preserves your existing Claude Code configuratio
 ✅ **Non-Destructive**: Never deletes existing configurations  
 ✅ **Permission Preservation**: Keeps your existing permission settings
 
+## 📁 Global Directory Structure
+
+After installation, your `~/.claude` directory will have the following structure:
+
+```
+~/.claude/
+├── settings.json                   # Global Claude Code configuration (merged)
+├── CLAUDE.md                      # Global instructions for all projects  
+├── .env                           # API keys and environment variables
+├── logs/                          # Session logs (auto-generated)
+│   ├── session-id-1/              # Individual session logs
+│   │   ├── session_start.json
+│   │   ├── pre_tool_use.json
+│   │   ├── post_tool_use.json
+│   │   ├── notification.json
+│   │   └── stop.json
+│   └── session-id-2/              # Another session's logs
+└── hooks/                         # Complete hook system
+    ├── pyproject.toml             # Python dependencies (uv project)
+    ├── .env.example               # Environment template
+    ├── session_start.py           # 🎬 Session initialization + TTS welcome
+    ├── pre_tool_use.py            # 🛡️ Safety checks (blocks dangerous commands)
+    ├── post_tool_use.py           # ✅ Post-execution processing + notifications
+    ├── notification.py            # 🔔 System notifications + AI summaries
+    ├── user_prompt_submit.py      # 📝 User interaction tracking
+    ├── subagent_stop.py           # 🤖 Subagent lifecycle management  
+    ├── pre_compact.py             # 🗜️ Memory optimization hooks
+    ├── stop.py                    # 👋 Session termination + farewell TTS
+    └── utils/                     # Utility modules
+        ├── constants.py           # 📋 Configuration constants and paths
+        ├── summarizer.py          # 🤖 AI-powered event summarization
+        ├── llm/                   # AI integrations
+        │   ├── anth.py           # 🧠 Anthropic Claude API integration
+        │   └── oai.py            # 🧠 OpenAI GPT API integration
+        └── tts/                   # Text-to-speech integrations
+            ├── elevenlabs_tts.py  # 🔊 Premium ElevenLabs voice synthesis
+            ├── openai_tts.py      # 🔊 OpenAI text-to-speech
+            └── pyttsx3_tts.py     # 🔊 Offline fallback TTS
+```
+
+**Key Features by Directory:**
+
+- **Root (`~/.claude/`)**: Global configuration that applies to all your Claude Code projects
+- **`hooks/`**: Complete hook system with all 8 lifecycle hooks and utilities  
+- **`utils/llm/`**: AI integrations for intelligent event summarization
+- **`utils/tts/`**: Multi-provider text-to-speech for audio notifications
+- **`logs/`**: Comprehensive session logging with structured JSON data
+
 ## 📋 Manual Installation
 
 ### Prerequisites
