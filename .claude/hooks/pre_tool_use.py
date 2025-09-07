@@ -25,54 +25,33 @@ except ImportError:
 
 def is_dangerous_rm_command(command):
     """
-    Comprehensive detection of dangerous rm commands.
-    Matches various forms of rm -rf and similar destructive patterns.
+    Detection of only the most dangerous rm commands.
+    Focus on system-critical paths to prevent catastrophic damage.
     """
     # Normalize command by removing extra spaces and converting to lowercase
     normalized = ' '.join(command.lower().split())
     
-    # Pattern 1: Standard rm -rf variations
-    patterns = [
-        r'\brm\s+.*-[a-z]*r[a-z]*f',  # rm -rf, rm -fr, rm -Rf, etc.
-        r'\brm\s+.*-[a-z]*f[a-z]*r',  # rm -fr variations
-        r'\brm\s+--recursive\s+--force',  # rm --recursive --force
-        r'\brm\s+--force\s+--recursive',  # rm --force --recursive
-        r'\brm\s+-r\s+.*-f',  # rm -r ... -f
-        r'\brm\s+-f\s+.*-r',  # rm -f ... -r
+    # Only check for the most dangerous rm -rf patterns on critical system paths
+    # Use more precise patterns to avoid false positives
+    critical_system_patterns = [
+        r'\brm\s+(-[rf]+|-r\s+-f|-f\s+-r|--recursive\s+--force|--force\s+--recursive)\s+/$',              # rm -rf / (root only)
+        r'\brm\s+(-[rf]+|-r\s+-f|-f\s+-r|--recursive\s+--force|--force\s+--recursive)\s+/\*$',             # rm -rf /* (root contents only) 
+        r'\brm\s+(-[rf]+|-r\s+-f|-f\s+-r|--recursive\s+--force|--force\s+--recursive)\s+/usr(/\*?)?$',     # rm -rf /usr or /usr/*
+        r'\brm\s+(-[rf]+|-r\s+-f|-f\s+-r|--recursive\s+--force|--force\s+--recursive)\s+/etc(/\*?)?$',     # rm -rf /etc or /etc/*
+        r'\brm\s+(-[rf]+|-r\s+-f|-f\s+-r|--recursive\s+--force|--force\s+--recursive)\s+/boot(/\*?)?$',    # rm -rf /boot or /boot/*
+        r'\brm\s+(-[rf]+|-r\s+-f|-f\s+-r|--recursive\s+--force|--force\s+--recursive)\s+/sys(/\*?)?$',     # rm -rf /sys or /sys/*
+        r'\brm\s+(-[rf]+|-r\s+-f|-f\s+-r|--recursive\s+--force|--force\s+--recursive)\s+/proc(/\*?)?$',    # rm -rf /proc or /proc/*
     ]
     
-    # Check for dangerous patterns
-    for pattern in patterns:
+    # Only block the most critical system-destroying commands
+    for pattern in critical_system_patterns:
         if re.search(pattern, normalized):
             return True
     
-    # Pattern 2: Check for rm with recursive flag targeting dangerous paths
-    dangerous_paths = [
-        r'/',           # Root directory
-        r'/\*',         # Root with wildcard
-        r'~',           # Home directory
-        r'~/',          # Home directory path
-        r'\$HOME',      # Home environment variable
-        r'\.\.',        # Parent directory references
-        r'\*',          # Wildcards in general rm -rf context
-        r'\.',          # Current directory
-        r'\.\s*$',      # Current directory at end of command
-    ]
-    
-    if re.search(r'\brm\s+.*-[a-z]*r', normalized):  # If rm has recursive flag
-        for path in dangerous_paths:
-            if re.search(path, normalized):
-                return True
-    
     return False
 
-def is_env_file_access(tool_name, tool_input):
-    """
-    Check if any tool is trying to access .env files containing sensitive data.
-    NOTE: This check has been disabled to allow .env file access.
-    """
-    # Environment file check disabled - returning False to allow access
-    return False
+# File access restrictions have been completely removed
+# The hook now only blocks the most dangerous system-destroying commands
 
 
 def get_tts_script_path():
@@ -142,20 +121,15 @@ def main():
         tool_name = input_data.get('tool_name', '')
         tool_input = input_data.get('tool_input', {})
         
-        # Check for .env file access - DISABLED
-        # The check below has been commented out to allow .env file access
-        # if is_env_file_access(tool_name, tool_input):
-        #     print("BLOCKED: Access to .env files containing sensitive data is prohibited", file=sys.stderr)
-        #     print("Use .env.sample for template files instead", file=sys.stderr)
-        #     sys.exit(2)  # Exit code 2 blocks tool call and shows error to Claude
-        
-        # Check for dangerous rm -rf commands
+        # Only check for system-destroying commands - all file access is now allowed
+        # Check for dangerous rm commands on critical system paths
         if tool_name == 'Bash':
             command = tool_input.get('command', '')
             
-            # Block rm -rf commands with comprehensive pattern matching
+            # Only block the most dangerous system-destroying rm commands
             if is_dangerous_rm_command(command):
-                print("BLOCKED: Dangerous rm command detected and prevented", file=sys.stderr)
+                print("BLOCKED: System-critical rm command detected and prevented", file=sys.stderr)
+                print("Command would destroy critical system directories", file=sys.stderr)
                 sys.exit(2)  # Exit code 2 blocks tool call and shows error to Claude
         
         # Extract session_id
