@@ -20,9 +20,7 @@ A comprehensive, production-ready hook system for Claude Code that provides inte
 This repository provides two deployment strategies:
 
 1. **Project-Specific**: Hook system works only in this project directory
-2. **Global Installation**: Hook system works across all Claude Code projects
-
-The directory structure follows Claude Code conventions:
+2. **Global Installation**: Hook system works across all Claude Code projects (recommended)
 
 ## 📁 Project Structure
 
@@ -56,12 +54,33 @@ claude-code-advanced-hooks/
 │               └── pyttsx3_tts.py
 ├── logs/                          # Session logs (auto-generated)
 ├── claude-code-global-setup.md    # Global installation guide
+├── install-global.sh             # Automated global installer
 └── README.md                      # This file
 ```
 
+**Important**: The environment file (`.env`) should be placed in the root `.claude/` directory, NOT in the `hooks/` subdirectory. This is critical for proper TTS functionality.
+
 ## 🛠️ Installation Options
 
-### Option 1: Project-Specific Setup (Recommended for Testing)
+### Option 1: Global Installation (Recommended)
+
+#### Quick Setup
+```bash
+curl -fsSL https://raw.githubusercontent.com/PeterJBurke/claude-code-advanced-hooks/main/install-global.sh | bash
+```
+
+This installer is **smart** and preserves your existing Claude Code configuration:
+
+✅ **Intelligent Merging**: Merges hook configuration with existing `settings.json`  
+✅ **Automatic Backups**: Creates timestamped backups of all existing files  
+✅ **Environment Handling**: Adds missing API keys to existing `.env` files  
+✅ **Non-Destructive**: Never deletes existing configurations  
+✅ **ccusage Integration**: Automatically installs and configures statusline
+
+#### Manual Global Setup
+For detailed manual installation, see the **[Global Setup Guide](./claude-code-global-setup.md)**.
+
+### Option 2: Project-Specific Setup (For Testing)
 
 #### 1. Prerequisites
 ```bash
@@ -71,6 +90,9 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # Install Node.js (for statusline)
 brew install node  # macOS
 # or download from nodejs.org
+
+# Install ccusage globally for statusline
+npm install -g ccusage
 ```
 
 #### 2. Clone and Setup
@@ -82,42 +104,41 @@ cd claude-code-advanced-hooks
 cd .claude/hooks
 uv sync
 
-# Configure environment variables
-cp .env.example .env
-# Edit .env with your API keys (see API Keys section below)
+# Configure environment variables (IMPORTANT: Place in parent directory)
+cp .env.example ../.env  # Note: Move to .claude/.env, not hooks/.env
+cd ..
+nano .env  # Edit with your API keys
 ```
 
 #### 3. Test the Installation
 ```bash
 # Test hook execution
-echo '{"session_id": "test"}' | uv run session_start.py --notify
+echo '{"session_id": "test"}' | uv run hooks/session_start.py --notify
 
 # Test TTS (if configured)
-uv run utils/tts/elevenlabs_tts.py "Hello World"
+uv run hooks/utils/tts/elevenlabs_tts.py "Hello World"
+
+# Test statusline
+npx -y ccusage statusline
 
 # Start Claude Code to activate hooks
 claude
 ```
 
-### Option 2: Global Installation (Production Setup)
-
-For system-wide installation across all projects, see the **[Global Setup Guide](./claude-code-global-setup.md)** - a comprehensive 400+ line guide that covers:
-
-- Complete `~/.claude` configuration
-- Automatic activation for all projects
-- Advanced troubleshooting
-- Custom integrations
-
-## 📋 Repository Location
-
-**GitHub Repository:** https://github.com/PeterJBurke/claude-code-advanced-hooks  
-**Local Path:** `/Users/peterburke/Documents/Code/ClaudeHelloWorld`
-
-The local repository is located at `/Users/peterburke/Documents/Code/ClaudeHelloWorld` and contains all source files, configuration, and documentation.
-
 ## 🔑 API Keys Setup
 
-Create `.claude/hooks/.env`:
+**CRITICAL**: The `.env` file must be in `~/.claude/.env` (global) or `.claude/.env` (project), NOT in the hooks subdirectory.
+
+Create the environment file:
+```bash
+# For global installation
+nano ~/.claude/.env
+
+# For project-specific installation  
+nano .claude/.env
+```
+
+Add your API keys:
 ```bash
 # Required for AI features
 ANTHROPIC_API_KEY=your-claude-api-key
@@ -128,19 +149,6 @@ ELEVENLABS_API_KEY=your-elevenlabs-key
 
 # Personalization
 ENGINEER_NAME=YourName
-```
-
-### 4. Test Installation
-
-```bash
-# Test hook execution
-echo '{"session_id": "test"}' | uv run .claude/hooks/session_start.py --notify
-
-# Test TTS (if configured)
-uv run .claude/hooks/utils/tts/elevenlabs_tts.py "Hello World"
-
-# Start Claude Code to activate hooks
-claude
 ```
 
 ## 🔧 Hook System Overview
@@ -166,23 +174,6 @@ claude
 - **Recursive Deletion Prevention**: Blocks `rm -rf` variations
 - **Override Protection**: Prevents `--force` flag combinations
 
-### AI Integration
-
-- **Smart Summaries**: Context-aware event descriptions
-- **Model Selection**: Optimized for speed (Claude Haiku, GPT-4 Mini)
-- **Fallback System**: Graceful degradation without API keys
-- **Cost Optimization**: Token-efficient prompting strategies
-
-## 🌐 Global Installation
-
-For system-wide installation across all projects, see [`claude-code-global-setup.md`](./claude-code-global-setup.md) - a comprehensive 400+ line guide covering:
-
-- Global `~/.claude` configuration
-- Path migration strategies  
-- Dependencies management
-- Testing procedures
-- Troubleshooting guide
-
 ## 🎛️ Configuration
 
 ### Core Settings (`.claude/settings.json`)
@@ -191,13 +182,20 @@ For system-wide installation across all projects, see [`claude-code-global-setup
 {
   "permissions": {
     "allow": [
-      "Bash(find:*)", "Bash(python:*)", "Bash(git:*)",
-      "Read(/Users/$USER/**)", "WebFetch(domain:ccusage.com)"
+      "Bash(uv run:*)", "Bash(python3:*)", "Bash(git:*)",
+      "Read(/home/$USER/**)", "WebFetch(domain:ccusage.com)",
+      "Bash(npx -y ccusage:*)"
     ]
   },
   "hooks": {
-    "SessionStart": [{"type": "command", "command": "uv run .claude/hooks/session_start.py --notify"}],
-    "PreToolUse": [{"type": "command", "command": "uv run .claude/hooks/pre_tool_use.py"}]
+    "SessionStart": [{"type": "command", "command": "uv run ~/.claude/hooks/session_start.py --notify"}],
+    "PreToolUse": [{"type": "command", "command": "uv run ~/.claude/hooks/pre_tool_use.py"}],
+    "PostToolUse": [{"type": "command", "command": "uv run ~/.claude/hooks/post_tool_use.py --notify"}],
+    "Notification": [{"type": "command", "command": "uv run ~/.claude/hooks/notification.py --notify"}],
+    "UserPromptSubmit": [{"type": "command", "command": "uv run ~/.claude/hooks/user_prompt_submit.py"}],
+    "SubagentStop": [{"type": "command", "command": "uv run ~/.claude/hooks/subagent_stop.py --notify"}],
+    "PreCompact": [{"type": "command", "command": "uv run ~/.claude/hooks/pre_compact.py --notify"}],
+    "Stop": [{"type": "command", "command": "uv run ~/.claude/hooks/stop.py --notify"}]
   },
   "statusLine": {
     "type": "command",
@@ -205,16 +203,6 @@ For system-wide installation across all projects, see [`claude-code-global-setup
   }
 }
 ```
-
-### Environment Variables
-
-| Variable | Purpose | Required |
-|----------|---------|----------|
-| `ANTHROPIC_API_KEY` | Claude API access | For AI summaries |
-| `OPENAI_API_KEY` | GPT API access | Alternative AI |
-| `ELEVENLABS_API_KEY` | Premium TTS | For best audio |
-| `ENGINEER_NAME` | Personalization | Optional |
-| `CLAUDE_HOOKS_LOG_DIR` | Custom log location | Optional |
 
 ## 🎵 Text-to-Speech System
 
@@ -225,7 +213,7 @@ For system-wide installation across all projects, see [`claude-code-global-setup
 
 ### Voice Customization
 ```python
-# Edit .claude/hooks/utils/tts/elevenlabs_tts.py
+# Edit ~/.claude/hooks/utils/tts/elevenlabs_tts.py
 voice="Rachel"  # Change to preferred voice
 model="eleven_multilingual_v2"  # Or eleven_turbo_v2 for speed
 ```
@@ -243,91 +231,153 @@ Install with:
 npm install -g ccusage
 ```
 
-## 🧪 Development
-
-### Adding New Hooks
-
-1. Create hook script following uv format:
-```python
-#!/usr/bin/env -S uv run --script
-# /// script
-# requires-python = ">=3.8"
-# dependencies = ["python-dotenv"]
-# ///
-```
-
-2. Add to `.claude/settings.json`
-3. Test with sample JSON input
-
-### Custom Utilities
-
-Add modules to `utils/` directory:
-- Follow consistent import patterns
-- Include error handling
-- Document dependencies in script headers
-
-### Testing
-
-```bash
-# Test individual hooks
-echo '{"session_id": "test"}' | uv run .claude/hooks/your_hook.py
-
-# Test utilities
-uv run .claude/hooks/utils/your_utility.py "test input"
-
-# Integration test
-claude  # Hooks activate automatically
-```
+**Note**: You may see Node.js version warnings - these can be ignored as ccusage works with older versions.
 
 ## 🔍 Troubleshooting
 
 ### Common Issues
 
-**Hooks not executing:**
+**1. TTS Not Working (Most Common)**
+
+This usually indicates incorrect environment file location:
+
+```bash
+# Check if .env is in the correct location
+ls -la ~/.claude/.env  # For global installation
+ls -la .claude/.env    # For project installation
+
+# If it's in hooks/.env, move it:
+mv ~/.claude/hooks/.env ~/.claude/.env
+
+# Test TTS directly
+cd ~/.claude/hooks
+uv run utils/tts/elevenlabs_tts.py "Test message"
+
+# Enable debug mode
+DEBUG_NOTIFICATIONS=1 echo '{"session_id": "test", "payload": {"message": "Test", "title": "Debug"}}' | uv run ~/.claude/hooks/notification.py --notify
+```
+
+**2. Multiple TTS Voices Playing**
+
+This happens when hooks have inconsistent environment loading:
+
+```bash
+# Check all hooks load .env from correct path
+grep -n "load_dotenv" ~/.claude/hooks/*.py
+
+# Should show: load_dotenv(Path(__file__).parent / ".env")
+# NOT: load_dotenv(Path(__file__).parent.parent.parent / ".env")
+```
+
+**3. StatusLine Not Working**
+
+```bash
+# Check ccusage installation
+npm list -g ccusage
+
+# Install if missing
+npm install -g ccusage
+
+# Test manually
+echo '{"test": "data"}' | npx -y ccusage statusline
+
+# Check settings.json has statusLine configuration
+grep -A3 statusLine ~/.claude/settings.json
+```
+
+**4. Hooks Not Executing**
+
 ```bash
 # Check permissions
-chmod +x .claude/hooks/*.py
+chmod +x ~/.claude/hooks/*.py
 
 # Verify uv installation
 uv --version
 
 # Test hook directly
-uv run .claude/hooks/session_start.py
+echo '{"session_id": "test"}' | uv run ~/.claude/hooks/session_start.py
 ```
 
-**TTS not working:**
+**5. Python Dependencies Missing**
+
 ```bash
-# Check API key
-cat .claude/hooks/.env | grep ELEVENLABS
+cd ~/.claude/hooks
+uv sync --reinstall
 
-# Test TTS directly  
-uv run .claude/hooks/utils/tts/elevenlabs_tts.py "test"
-
-# Check audio system
-# macOS: System Preferences > Sound
-# Linux: pulseaudio/alsa configuration
+# Check environment
+uv run python --version
 ```
 
-**Missing dependencies:**
+**6. API Keys Not Loading**
+
 ```bash
-cd .claude/hooks
-uv sync  # Reinstall all dependencies
+# Verify .env location (common issue)
+ls -la ~/.claude/.env  # Should exist here
+ls -la ~/.claude/hooks/.env  # Should NOT exist here
+
+# Test environment loading
+cd ~/.claude/hooks
+uv run python -c "import os; from dotenv import load_dotenv; load_dotenv('../.env'); print('ELEVENLABS_API_KEY' in os.environ)"
 ```
+
+### Debug Mode
+
+Enable comprehensive debugging:
+
+```bash
+# Test notification system with debug output
+DEBUG_NOTIFICATIONS=1 echo '{"session_id": "test", "payload": {"message": "Debug test", "title": "Testing"}}' | uv run ~/.claude/hooks/notification.py --notify
+
+# Check debug logs
+tail -f ~/.claude/hooks/debug_*.txt
+```
+
+### Environment File Verification
+
+The most critical issue is environment file location. Use this checklist:
+
+- ✅ `.env` file is in `~/.claude/.env` (global) or `.claude/.env` (project)
+- ❌ `.env` file is NOT in `~/.claude/hooks/.env`
+- ✅ All hook scripts load from `Path(__file__).parent / ".env"`
+- ✅ API keys are properly formatted in .env file
+- ✅ ccusage is installed globally with npm
+
+## 🧪 Development
+
+### Testing New Hooks
+
+```bash
+# Test individual hooks with debug
+DEBUG_NOTIFICATIONS=1 echo '{"session_id": "test"}' | uv run ~/.claude/hooks/your_hook.py --notify
+
+# Verify environment loading
+uv run ~/.claude/hooks/utils/tts/elevenlabs_tts.py "Environment test"
+
+# Check logs
+ls -la ~/.claude/logs/
+```
+
+## 📚 Repository Information
+
+**GitHub Repository:** https://github.com/PeterJBurke/claude-code-advanced-hooks  
+**Issues/Support:** https://github.com/PeterJBurke/claude-code-advanced-hooks/issues
 
 ## 🤝 Contributing
 
 1. Fork the repository
 2. Create feature branch: `git checkout -b feature/amazing-feature`
 3. Follow existing code patterns and documentation
-4. Test thoroughly across hook types
+4. Test thoroughly (especially TTS and environment loading)
 5. Submit pull request with detailed description
 
-### Code Standards
-- Use uv script headers for dependencies
-- Include comprehensive error handling
-- Document environment variables
-- Follow consistent logging patterns
-- Test with and without API keys
+### Testing Checklist for Contributors
+
+- ✅ `.env` file loads from correct location
+- ✅ TTS works with ElevenLabs (not pyttsx3 fallback)
+- ✅ StatusLine displays usage information
+- ✅ Hooks execute without errors
+- ✅ API keys are properly loaded
+- ✅ No multiple TTS systems playing simultaneously
 
 ## 📜 License
 
@@ -342,6 +392,10 @@ MIT License - feel free to use, modify, and distribute.
 
 ---
 
-**⚡ Ready to supercharge your Claude Code experience?** Follow the setup guide and enjoy intelligent, safe, and delightful AI interactions!
+**⚡ Ready to supercharge your Claude Code experience?** Use the global installer for the most robust setup:
 
-For questions, issues, or feature requests, please open a GitHub issue.
+```bash
+curl -fsSL https://raw.githubusercontent.com/PeterJBurke/claude-code-advanced-hooks/main/install-global.sh | bash
+```
+
+For questions, issues, or if TTS isn't working, check the troubleshooting section or open a GitHub issue.

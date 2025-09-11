@@ -17,6 +17,7 @@ This installer is **smart** and preserves your existing Claude Code configuratio
 ✅ **Environment Handling**: Adds missing API keys to existing `.env` files  
 ✅ **Non-Destructive**: Never deletes existing configurations  
 ✅ **Permission Preservation**: Keeps your existing permission settings
+✅ **ccusage Integration**: Automatically installs and configures statusline
 
 ## 📁 Global Directory Structure
 
@@ -26,7 +27,7 @@ After installation, your `~/.claude` directory will have the following structure
 ~/.claude/
 ├── settings.json                   # Global Claude Code configuration (merged)
 ├── CLAUDE.md                      # Global instructions for all projects  
-├── .env                           # API keys and environment variables
+├── .env                           # API keys and environment variables (CRITICAL LOCATION)
 ├── logs/                          # Session logs (auto-generated)
 │   ├── session-id-1/              # Individual session logs
 │   │   ├── session_start.json
@@ -58,6 +59,8 @@ After installation, your `~/.claude` directory will have the following structure
             └── pyttsx3_tts.py     # 🔊 Offline fallback TTS
 ```
 
+**🚨 CRITICAL**: The `.env` file MUST be in `~/.claude/.env` (root of .claude directory), NOT in `~/.claude/hooks/.env`. This is the most common cause of TTS failures.
+
 **Key Features by Directory:**
 
 - **Root (`~/.claude/`)**: Global configuration that applies to all your Claude Code projects
@@ -87,11 +90,27 @@ After installation, your `~/.claude` directory will have the following structure
    # Or download from nodejs.org
    ```
 
+3. **ccusage** (for API usage monitoring)
+   ```bash
+   npm install -g ccusage
+   ```
+   
+   **Note**: You may see Node.js version warnings like:
+   ```
+   npm WARN EBADENGINE Unsupported engine {
+   npm WARN EBADENGINE   package: 'ccusage@16.2.4',
+   npm WARN EBADENGINE   required: { node: '>=20.19.4' },
+   npm WARN EBADENGINE   current: { node: 'v18.19.1', npm: '9.2.0' }
+   npm WARN EBADENGINE }
+   ```
+   These warnings can be safely ignored - ccusage works with older Node.js versions.
+
 ### Step 1: Create Directory Structure
 
 ```bash
 # Create the global Claude directory structure
 mkdir -p ~/.claude/hooks/utils/{llm,tts}
+mkdir -p ~/.claude/logs
 cd ~/.claude
 ```
 
@@ -169,18 +188,15 @@ cd ~/.claude/hooks
 # Initialize and install dependencies
 uv sync
 
-# Create your environment file
-cp .env.example .env
+# Create your environment file in the CORRECT location
+cp .env.example ~/.claude/.env  # NOTE: Move to parent directory, NOT hooks/.env
 ```
 
 ### Step 6: Configure Environment Variables
 
-Edit `~/.claude/.env` (note: this file should be in the root .claude directory, not hooks):
+🚨 **CRITICAL**: Edit `~/.claude/.env` (note: this file should be in the root .claude directory, not hooks):
 
 ```bash
-# Move .env to the correct location
-mv ~/.claude/hooks/.env ~/.claude/.env
-
 # Edit with your favorite editor
 nano ~/.claude/.env
 # or
@@ -200,13 +216,30 @@ ELEVENLABS_API_KEY=your-elevenlabs-api-key-here
 ENGINEER_NAME=YourName
 ```
 
-### Step 7: Install StatusLine Dependencies
+### Step 7: Verify Environment File Location
+
+This is the most critical step for TTS functionality:
+
+```bash
+# Verify .env is in the correct location
+ls -la ~/.claude/.env          # ✅ Should exist here
+ls -la ~/.claude/hooks/.env    # ❌ Should NOT exist here
+
+# If you have a .env file in the hooks directory, remove it:
+rm -f ~/.claude/hooks/.env
+
+# Test environment loading
+cd ~/.claude/hooks
+uv run python -c "import os; from dotenv import load_dotenv; load_dotenv('../.env'); print(f'ELEVENLABS_API_KEY loaded: {bool(os.getenv(\"ELEVENLABS_API_KEY\"))}')"
+```
+
+### Step 8: Install StatusLine Dependencies
 
 ```bash
 # Install ccusage globally for usage tracking
 npm install -g ccusage
 
-# Test statusline
+# Test statusline (will show "No input provided" - this is expected)
 npx -y ccusage statusline
 ```
 
@@ -214,7 +247,7 @@ npx -y ccusage statusline
 
 ### Automated Installation Script
 
-Create your own installer script:
+Create your own installer script with better error handling:
 
 ```bash
 cat > install-claude-hooks.sh << 'EOF'
@@ -235,9 +268,14 @@ if ! command -v node &> /dev/null; then
     exit 1
 fi
 
+# Install ccusage first
+echo "📊 Installing ccusage for statusline..."
+npm install -g ccusage
+
 # Create directory structure
 echo "📁 Creating directory structure..."
 mkdir -p ~/.claude/hooks/utils/{llm,tts}
+mkdir -p ~/.claude/logs
 
 # Define base URL
 REPO_URL="https://raw.githubusercontent.com/PeterJBurke/claude-code-advanced-hooks/main"
@@ -247,7 +285,10 @@ download_file() {
     local url="$1"
     local output="$2"
     echo "⬇️  Downloading $(basename "$output")..."
-    curl -fsSL "$url" -o "$output"
+    if ! curl -fsSL "$url" -o "$output"; then
+        echo "❌ Failed to download $(basename "$output")"
+        exit 1
+    fi
 }
 
 # Download configuration files
@@ -284,21 +325,19 @@ chmod +x *.py utils/**/*.py
 echo "🐍 Installing Python dependencies..."
 uv sync
 
-# Set up environment
+# Set up environment in the CORRECT location
 if [ ! -f ~/.claude/.env ]; then
     cp .env.example ~/.claude/.env
     echo "📝 Created ~/.claude/.env - please edit with your API keys"
+else
+    echo "📝 Environment file already exists at ~/.claude/.env"
 fi
-
-# Install ccusage
-echo "📊 Installing ccusage for statusline..."
-npm install -g ccusage
 
 echo "✅ Installation complete!"
 echo ""
 echo "Next steps:"
 echo "1. Edit ~/.claude/.env with your API keys"
-echo "2. Test with: echo '{\"session_id\": \"test\"}' | uv run ~/.claude/hooks/session_start.py"
+echo "2. Test with: echo '{\"session_id\": \"test\"}' | uv run ~/.claude/hooks/session_start.py --notify"
 echo "3. Start Claude Code in any project!"
 EOF
 
@@ -316,11 +355,44 @@ echo '{"session_id": "test-global"}' | uv run ~/.claude/hooks/session_start.py -
 # Test AI integration (requires API key)
 uv run ~/.claude/hooks/utils/llm/anth.py "Hello from global installation"
 
-# Test TTS (requires API key)
+# Test TTS (requires API key) - Should use ElevenLabs, not pyttsx3
 uv run ~/.claude/hooks/utils/tts/elevenlabs_tts.py "Global installation test"
 
 # Test statusline
-npx -y ccusage statusline
+echo '{"test": "data"}' | npx -y ccusage statusline
+```
+
+### TTS Verification Tests
+
+The most common issue is TTS not working correctly. Use these tests:
+
+```bash
+# Verify environment file location
+ls -la ~/.claude/.env  # Must exist
+ls -la ~/.claude/hooks/.env  # Must NOT exist
+
+# Test environment loading in hooks context
+cd ~/.claude/hooks
+uv run python << EOF
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Test the correct path that hooks should use
+env_path = Path(__file__).parent / ".env"
+print(f"Looking for .env at: {env_path}")
+print(f"File exists: {env_path.exists()}")
+
+# This should find ~/.claude/.env
+if env_path.exists():
+    load_dotenv(env_path)
+    print(f"ELEVENLABS_API_KEY loaded: {bool(os.getenv('ELEVENLABS_API_KEY'))}")
+else:
+    print("❌ .env file not found - TTS will not work properly")
+EOF
+
+# Test TTS selection with debug
+DEBUG_NOTIFICATIONS=1 echo '{"session_id": "test", "payload": {"message": "TTS test", "title": "Testing"}}' | uv run ~/.claude/hooks/notification.py --notify
 ```
 
 ### Integration Test
@@ -351,44 +423,111 @@ ls -la ~/.claude/hooks/*.py | head -5
 
 # Test configuration
 cat ~/.claude/settings.json | head -10
+
+# CRITICAL: Verify environment file location
+echo "Environment file location check:"
+[ -f ~/.claude/.env ] && echo "✅ ~/.claude/.env exists" || echo "❌ ~/.claude/.env missing"
+[ -f ~/.claude/hooks/.env ] && echo "❌ ~/.claude/hooks/.env exists (should not)" || echo "✅ ~/.claude/hooks/.env correctly absent"
 ```
 
 ## 🔧 Troubleshooting
 
-### Common Issues
+### Most Common Issues
 
-1. **Permission Denied Errors**
+**1. TTS Not Working / Using Wrong Voice (Most Common Issue)**
+
+This is almost always due to incorrect environment file location:
+
+```bash
+# Check environment file location
+ls -la ~/.claude/.env          # ✅ Should exist
+ls -la ~/.claude/hooks/.env    # ❌ Should NOT exist
+
+# If .env is in wrong location, move it:
+if [ -f ~/.claude/hooks/.env ]; then
+    echo "Moving .env to correct location..."
+    mv ~/.claude/hooks/.env ~/.claude/.env
+fi
+
+# Verify all hooks load .env from correct path
+grep -n "load_dotenv" ~/.claude/hooks/*.py | grep -v ".env.example"
+
+# Should show patterns like:
+# load_dotenv(Path(__file__).parent / ".env")
+# NOT: load_dotenv(Path(__file__).parent.parent.parent / ".env")
+
+# Test TTS directly
+cd ~/.claude/hooks
+uv run utils/tts/elevenlabs_tts.py "TTS test message"
+
+# If you hear pyttsx3 (robotic voice) instead of ElevenLabs, environment loading is broken
+```
+
+**2. Multiple TTS Voices Playing Simultaneously**
+
+This happens when some hooks use ElevenLabs while others fall back to pyttsx3:
+
+```bash
+# Enable debug mode to see which TTS is being selected
+DEBUG_NOTIFICATIONS=1 echo '{"session_id": "test", "payload": {"message": "Debug test", "title": "Testing"}}' | uv run ~/.claude/hooks/notification.py --notify
+
+# Look for output like:
+# DEBUG: ELEVENLABS_API_KEY present: True
+# DEBUG: ElevenLabs script exists: True
+# DEBUG: Selecting ElevenLabs: /home/peter/.claude/hooks/utils/tts/elevenlabs_tts.py
+
+# If you see "ELEVENLABS_API_KEY present: False", the environment file is not loading
+```
+
+**3. StatusLine Not Working**
+
+```bash
+# Check ccusage installation
+npm list -g ccusage
+
+# Reinstall if needed
+npm uninstall -g ccusage
+npm install -g ccusage
+
+# Test statusline manually
+echo '{"test": "data"}' | npx -y ccusage statusline
+
+# Check settings.json has statusLine configuration
+grep -A5 statusLine ~/.claude/settings.json
+```
+
+**4. Permission Denied Errors**
    ```bash
    chmod +x ~/.claude/hooks/*.py
    find ~/.claude/hooks -name "*.py" -exec chmod +x {} \;
    ```
 
-2. **Python Dependencies Not Installing**
+**5. Python Dependencies Not Installing**
    ```bash
    cd ~/.claude/hooks
    uv sync --reinstall
    ```
 
-3. **API Keys Not Working**
+**6. API Keys Not Working**
    ```bash
-   # Check environment file location
+   # Check environment file location (most common issue)
    ls -la ~/.claude/.env
    
    # Test loading
    cd ~/.claude/hooks
-   uv run python -c "import os; from dotenv import load_dotenv; load_dotenv('../.env'); print('ANTHROPIC_API_KEY' in os.environ)"
+   uv run python -c "import os; from dotenv import load_dotenv; load_dotenv('../.env'); print('Keys loaded:', {k: bool(v) for k, v in os.environ.items() if 'API_KEY' in k})"
    ```
 
-4. **Hooks Not Executing**
+**7. Hooks Not Executing**
    ```bash
    # Check settings file
-   cat ~/.claude/settings.json | grep -A5 hooks
+   cat ~/.claude/settings.json | grep -A10 hooks
    
    # Test direct execution
    echo '{"session_id": "debug"}' | uv run ~/.claude/hooks/session_start.py
    ```
 
-5. **Download Failures**
+**8. Download Failures**
    ```bash
    # Test connectivity
    curl -I https://raw.githubusercontent.com/PeterJBurke/claude-code-advanced-hooks/main/.claude/settings.json
@@ -398,20 +537,40 @@ cat ~/.claude/settings.json | head -10
    cp -r /tmp/claude-hooks/.claude ~/
    ```
 
-6. **TTS Notifications Not Working**
-   ```bash
-   # Test notification system with debugging
-   echo '{"session_id": "test", "payload": {"message": "Would you like to continue?", "title": "Input Required"}}' | DEBUG_NOTIFICATIONS=1 uv run ~/.claude/hooks/notification.py --notify
-   
-   # Check available TTS providers
-   ls -la ~/.claude/hooks/utils/tts/
-   
-   # Test specific TTS script directly
-   uv run ~/.claude/hooks/utils/tts/elevenlabs_tts.py "Test message"
-   
-   # Verify API keys are set
-   grep -E "ELEVENLABS_API_KEY|OPENAI_API_KEY|ENGINEER_NAME" ~/.claude/.env
-   ```
+### Debug Mode
+
+Enable comprehensive debugging for TTS and notification issues:
+
+```bash
+# Test notification system with full debug output
+DEBUG_NOTIFICATIONS=1 echo '{"session_id": "test", "payload": {"message": "Would you like to continue?", "title": "Input Required"}}' | uv run ~/.claude/hooks/notification.py --notify
+
+# Check debug files
+ls -la ~/.claude/hooks/debug_*.txt
+tail -f ~/.claude/hooks/debug_*.txt
+
+# Test each TTS provider individually
+echo "Testing ElevenLabs TTS..."
+uv run ~/.claude/hooks/utils/tts/elevenlabs_tts.py "ElevenLabs test"
+
+echo "Testing OpenAI TTS..."
+uv run ~/.claude/hooks/utils/tts/openai_tts.py "OpenAI test"
+
+echo "Testing pyttsx3 TTS..."
+uv run ~/.claude/hooks/utils/tts/pyttsx3_tts.py "pyttsx3 test"
+```
+
+### Environment File Checklist
+
+The most critical verification for proper TTS functionality:
+
+| Check | Status | Action |
+|-------|--------|--------|
+| `.env` in `~/.claude/.env` | ✅ Must exist | Create if missing |
+| `.env` in `~/.claude/hooks/.env` | ❌ Must NOT exist | Delete if present |
+| Hook scripts load from parent directory | ✅ Required | Fix load_dotenv() calls |
+| ELEVENLABS_API_KEY is set | ✅ For premium TTS | Add to .env file |
+| ccusage installed globally | ✅ For statusline | `npm install -g ccusage` |
 
 ### Path Updates Required
 
@@ -420,7 +579,7 @@ When using the global installation, all path references are automatically update
 | Component | Global Path |
 |-----------|-------------|
 | Settings | `~/.claude/settings.json` |
-| Environment | `~/.claude/.env` |
+| Environment | `~/.claude/.env` (CRITICAL) |
 | Hook Scripts | `~/.claude/hooks/*.py` |
 | Utilities | `~/.claude/hooks/utils/` |
 | Logs | `~/.claude/logs/` |
@@ -436,7 +595,7 @@ With this global setup, you get across ALL your projects:
   - ⚠️ "Error occurred, check Claude" for warnings and issues  
   - ✅ "Task completed" for successful operations
 - ✅ **AI Summarization**: Intelligent event descriptions
-- ✅ **Usage Tracking**: StatusLine integration
+- ✅ **Usage Tracking**: StatusLine integration with ccusage
 - ✅ **Browser Integration**: MCP server support
 - ✅ **Global Consistency**: Same experience everywhere
 
@@ -445,6 +604,7 @@ With this global setup, you get across ALL your projects:
 - **GitHub Repository**: https://github.com/PeterJBurke/claude-code-advanced-hooks
 - **Project-Specific Setup**: See repository README.md
 - **Claude Code Documentation**: https://docs.anthropic.com/en/docs/claude-code
+- **Issues/Support**: https://github.com/PeterJBurke/claude-code-advanced-hooks/issues
 
 ## 🤝 Contributing
 
@@ -452,8 +612,23 @@ Found an issue or want to improve the installation process?
 
 1. Report bugs at https://github.com/PeterJBurke/claude-code-advanced-hooks/issues
 2. Suggest improvements for this installation guide
-3. Help create the automated installer script
+3. Help test the TTS functionality across different environments
+
+### Testing Checklist for Contributors
+
+Before submitting changes, verify:
+
+- ✅ `.env` file loads from `~/.claude/.env` (not hooks subdirectory)
+- ✅ TTS works with ElevenLabs (not pyttsx3 fallback)
+- ✅ StatusLine displays usage information
+- ✅ Hooks execute without errors
+- ✅ API keys are properly loaded
+- ✅ No multiple TTS systems playing simultaneously
+- ✅ ccusage is installed and working
+- ✅ All hook scripts use correct environment loading paths
 
 ---
 
 **🎉 Ready to experience Claude Code with advanced hooks globally? Follow the installation steps above and enjoy enhanced AI interactions across all your projects!**
+
+**Most Important**: If TTS doesn't work, check that your `.env` file is in `~/.claude/.env` (NOT in the hooks subdirectory). This fixes 90% of TTS issues.

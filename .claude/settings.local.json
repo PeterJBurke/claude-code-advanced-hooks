@@ -30,9 +30,125 @@
       "Bash(cp:*)",
       "Bash(chmod:*)",
       "WebSearch",
-      "Bash(bash:*)"
+      "Bash(bash:*)",
+      "Read(//home/peter/.claude/**)",
+      "Bash(test:*)",
+      "Bash(/hooks)",
+      "Bash(hooks)",
+      "Bash(/home/peter/.claude/hooks/session_start.py --load-context --notify)",
+      "Bash(python3:*)",
+      "Bash(/home/peter/.claude/hooks/session_start.py)",
+      "Bash(env -S uv:*)",
+      "Bash(/home/peter/.claude/hooks/session_start_wrapper.py)",
+      "Bash(cat:*)",
+      "Bash(/home/peter/.claude/hooks/session_start_wrapper.py --load-context --notify)",
+      "Bash(env)",
+      "Bash(find:*)",
+      "Bash(uv run /home/peter/.claude/hooks/utils/tts/elevenlabs_tts.py:*)",
+      "Bash(uv run /home/peter/.claude/hooks/utils/tts/openai_tts.py:*)",
+      "Bash(uv run /home/peter/.claude/hooks/utils/tts/pyttsx3_tts.py:*)",
+      "Bash(/home/peter/.claude/hooks/notification.py)",
+      "Bash(DEBUG_NOTIFICATIONS=1 echo '{\"\"\"\"type\"\"\"\": \"\"\"\"notification\"\"\"\", \"\"\"\"text\"\"\"\": \"\"\"\"Test notification\"\"\"\"}')",
+      "Bash(export DEBUG_NOTIFICATIONS=1)",
+      "Bash(/home/peter/.claude/hooks/notification.py --notify)",
+      "Read(//tmp/**)",
+      "Bash(for hook in session_start.py user_prompt_submit.py post_tool_use.py pre_tool_use.py stop.py subagent_stop.py pre_compact.py)",
+      "Bash(do)",
+      "Bash(done)",
+      "Bash(for:*)",
+      "Bash(sed:*)",
+      "Bash(npm install:*)",
+      "Bash(ccusage --version)",
+      "Read(//home/peter/**)",
+      "Bash(/home/peter/.claude/hooks/stop.py:*)"
     ],
     "deny": [],
     "ask": []
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/peter/.claude/hooks/session_start_wrapper.py --load-context --notify"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/peter/.claude/hooks/user_prompt_submit.py"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/peter/.claude/hooks/pre_tool_use.py"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/peter/.claude/hooks/post_tool_use.py"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/peter/.claude/hooks/notification.py --notify"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/peter/.claude/hooks/stop.py"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/peter/.claude/hooks/subagent_stop.py"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/peter/.claude/hooks/pre_compact.py"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "npx -y ccusage statusline"
   }
 }
